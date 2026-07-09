@@ -7,8 +7,12 @@ const PAGE = 60;
 /* ---------- sunucu / kimlik ---------- */
 /* Davet linki (?davet=TOKEN) ile çok kullanıcılı moda geçilir; token'sız açılışta
    cihaza gömülü veri (data.js) varsa eski tek kullanıcılı "yerel mod" çalışır. */
-const API_BASE = localStorage.getItem('mydealer_api') || 'https://urun-fiyat-takip.onrender.com';
-const API = API_BASE + '/api/mydealer';
+/* Üretim API'si: Google Apps Script web uygulaması (veri, yöneticinin Drive'ında).
+   localStorage 'mydealer_api' ile geçersiz kılınabilir (yerel test: http://localhost:3100). */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz57kXHlPI6FBcwcIzi4atI7oPVabOdcd4itE_cfD5MIiFdzXlbnjfejwFNirAsI0NA/exec';
+const API_BASE = localStorage.getItem('mydealer_api') || GAS_URL;
+const GAS_MODE = API_BASE.includes('script.google');
+const API = GAS_MODE ? API_BASE : API_BASE + '/api/mydealer';
 const LOKAL_VERI = typeof BAYILER !== 'undefined' ? BAYILER : [];
 let TOKEN = '';
 {
@@ -24,12 +28,29 @@ let TOKEN = '';
 let SRV = null; // {role, name, sehir, ilce, dealers, pendingCount, updated} — çevrimiçi mod
 function isAdmin() { return SRV ? SRV.role === 'admin' : true; } // yerel mod = tek kullanıcı, tam yetki
 
+function gasHata(j) { // Apps Script her zaman 200 döner; hata gövdede gelir
+  if (j && j.error) throw Object.assign(new Error(j.error), { status: j.error === 'gecersiz_token' ? 401 : 400 });
+  return j;
+}
 async function apiGet(path) {
+  if (GAS_MODE) {
+    const r = await fetch(`${API}?op=${path}&token=${encodeURIComponent(TOKEN)}`, { redirect: 'follow' });
+    return gasHata(await r.json());
+  }
   const r = await fetch(`${API}/${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(TOKEN)}`);
   if (!r.ok) throw Object.assign(new Error('api'), { status: r.status });
   return r.json();
 }
 async function apiPost(path, body) {
+  if (GAS_MODE) {
+    // content-type: text/plain → tarayıcı CORS ön uçuşu yapmaz (Apps Script OPTIONS yanıtlamaz)
+    const r = await fetch(API, {
+      method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ op: path, token: TOKEN }, body)),
+      redirect: 'follow'
+    });
+    return gasHata(await r.json());
+  }
   const r = await fetch(`${API}/${path}`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify(Object.assign({ token: TOKEN }, body))
