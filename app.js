@@ -168,8 +168,25 @@ function card(b) {
     </div>
   </div>`;
 }
+function renderGiris() {
+  $('#count').textContent = '';
+  $('#more').hidden = true;
+  $('#list').innerHTML = `
+    <div class="empty">
+      ${TOKEN
+        ? 'Sunucuya bağlanılamadı.<br>İnternetinizi kontrol edin — ilk açılışta yanıt 5-10 saniye sürebilir.'
+        : 'Bu uygulama <b>davet linkiyle</b> çalışır.<br>Size gönderilen linki aşağıya yapıştırın:'}
+      <input id="girisTok" placeholder="Davet linkini buraya yapıştırın" autocomplete="off"
+        style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:14px;margin-top:14px;background:#fff">
+      <div style="margin-top:10px">
+        <button class="btn pri" id="btnGiris">Bağlan</button>
+        ${TOKEN ? '<button class="btn gry" id="btnTekrar" style="margin-left:8px">↻ Tekrar Dene</button>' : ''}
+      </div>
+    </div>`;
+}
 function renderList() {
   cur = filtered();
+  if (!allDealers().length) { renderGiris(); renderChips(); return; }
   $('#count').textContent = cur.length.toLocaleString('tr-TR') + ' bayi';
   const slice = cur.slice(0, shown);
   $('#list').innerHTML = slice.length ? slice.map(card).join('') : '<div class="empty">Eşleşen bayi yok.<br>Filtreleri veya aramayı değiştirin.</div>';
@@ -804,6 +821,17 @@ document.addEventListener('click', e => {
   if (t.dataset && t.dataset.gfile) { driveLoadFile(t.dataset.gfile); return; }
   if (t.dataset && t.dataset.karar) { const [k, id] = t.dataset.karar.split('|'); karar(k, id); return; }
   if (t.id === 'btnCreateInvite') { createInvite(); return; }
+  if (t.id === 'btnGiris') {
+    const v = ($('#girisTok').value || '').trim();
+    const m = v.match(/davet=([A-Za-z0-9_-]+)/);
+    const tok = m ? m[1] : v;
+    if (!tok) { alert('Önce davet linkinizi yapıştırın.'); return; }
+    TOKEN = tok; localStorage.setItem('mydealer_token', tok);
+    t.textContent = 'Bağlanıyor…';
+    syncData(false).then(ok => { if (!ok) renderList(); });
+    return;
+  }
+  if (t.id === 'btnTekrar') { t.textContent = '↻ Deneniyor…'; syncData(false).then(ok => { if (!ok) renderList(); }); return; }
   if (t.dataset && t.dataset.copy) {
     navigator.clipboard.writeText(t.dataset.copy).then(() => { t.textContent = '✓ Kopyalandı'; setTimeout(() => t.textContent = '🔗 Linki Kopyala', 1600); })
       .catch(() => prompt('Linki elle kopyalayın:', t.dataset.copy));
@@ -888,9 +916,5 @@ $('#btnMyPending').addEventListener('click', async () => { await syncData(true);
 /* ---------- başlat ---------- */
 renderList();
 applyRoleUI();
-if (TOKEN) {
-  syncData(false); // çevrimiçi mod: sunucudan çek (arka planda)
-} else if (!LOKAL_VERI.length) {
-  $('#list').innerHTML = '<div class="empty">Bu uygulamaya erişmek için size gönderilen <b>davet linkiyle</b> açın.<br><br>Linkiniz yoksa yöneticiden isteyin.</div>';
-}
+if (TOKEN) syncData(true).then(ok => { if (!ok) renderList(); }); // çevrimiçi mod (başarısızsa giriş paneli)
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

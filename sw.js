@@ -1,4 +1,4 @@
-const CACHE = 'mydealer-v5';
+const CACHE = 'mydealer-v6';
 const ASSETS = [
   './', './index.html', './app.js', './data.js', './manifest.webmanifest',
   './icon-192.png', './icon-512.png',
