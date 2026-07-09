@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12325e">
+<title>MyDealer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="vendor/markercluster.css">
+<link rel="stylesheet" href="vendor/markercluster.default.css">
+<style>
+:root{
+  --bg:#f2f5fa; --card:#ffffff; --ink:#16233b; --mut:#6b7a94; --line:#e3e9f2;
+  --pri:#12325e; --pri2:#1d4e9e; --acc:#0e8f6f; --warn:#c2452d; --chip:#e8eef8;
+  --segA:#0e8f6f; --segB:#1d4e9e; --segC:#b07a12; --segD:#8a5fc9; --segK:#c2452d;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);overscroll-behavior-y:none}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+/* ---------- üst bar ---------- */
+header{position:sticky;top:0;z-index:900;background:var(--pri);color:#fff;padding:10px 12px 8px;padding-top:calc(10px + env(safe-area-inset-top))}
+.hrow{display:flex;align-items:center;gap:8px}
+.logo{font-size:18px;font-weight:800;letter-spacing:.3px}
+.logo small{font-weight:400;opacity:.75;font-size:11px;margin-left:6px}
+#count{margin-left:auto;font-size:12px;background:rgba(255,255,255,.15);padding:3px 9px;border-radius:99px}
+.srow{display:flex;gap:8px;margin-top:8px}
+#q{flex:1;border:0;border-radius:10px;padding:9px 12px;font-size:15px;background:#fff}
+#btnFilter{background:rgba(255,255,255,.15);border-radius:10px;padding:0 13px;font-size:17px;color:#fff}
+#btnFilter.on{background:var(--acc)}
+#chips{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 2px;scrollbar-width:none}
+#chips:empty{display:none}
+#chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;background:var(--chip);color:var(--pri2);font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;white-space:nowrap}
+.chip b{margin-left:4px}
+/* ---------- ana ---------- */
+main{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+.view{display:none}
+.view.on{display:block}
+/* liste */
+#toolbar{display:flex;gap:8px;padding:10px 12px 2px}
+.tbtn{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:13px;font-weight:600;color:var(--pri2)}
+.tbtn.on{background:var(--pri2);color:#fff;border-color:var(--pri2)}
+#list{padding:10px 12px}
+.bcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:9px;display:flex;gap:10px;align-items:flex-start}
+.bmain{flex:1;min-width:0}
+.bname{font-weight:700;font-size:15px;line-height:1.25}
+.bsub{font-size:12.5px;color:var(--mut);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bmeta{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--pri2)}
+.tag.seg{color:#fff}
+.tag.vis{background:#e2f5ee;color:var(--acc)}
+.tag.mis{background:#fdeeea;color:var(--warn)}
+.tag.dist{background:#fff3d6;color:#9a6b00}
+.bside{display:flex;flex-direction:column;align-items:center;gap:8px}
+.fav{font-size:19px;opacity:.35}
+.fav.on{opacity:1}
+.callq{font-size:18px;background:#e2f5ee;border-radius:99px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+#more{display:block;margin:6px auto 18px;padding:9px 22px;border-radius:99px;background:var(--card);border:1px solid var(--line);color:var(--pri2);font-weight:600}
+.empty{text-align:center;color:var(--mut);padding:48px 20px;font-size:14px}
+/* harita */
+#map{height:calc(100vh - 205px);min-height:340px}
+#mapNote{font-size:11.5px;color:var(--mut);text-align:center;padding:6px}
+.mpin{border-radius:99px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.leaflet-popup-content{font:13px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif;margin:10px 12px}
+.pop-name{font-weight:700;font-size:14px}
+.pop-btns{display:flex;gap:6px;margin-top:8px}
+.pop-btns a,.pop-btns button{background:var(--pri2);color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none}
+/* özet */
+#stats{padding:12px}
+.scard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.scard h3{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.bigrow{display:flex;gap:10px;text-align:center}
+.bigrow div{flex:1}
+.bignum{font-size:23px;font-weight:800;color:var(--pri2)}
+.biglab{font-size:11px;color:var(--mut)}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12.5px}
+.bar span:first-child{width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar i{height:14px;border-radius:5px;background:var(--pri2);display:block}
+.bar b{color:var(--mut);font-weight:600}
+/* onay & davet */
+.pend-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:10px}
+.pend-head{font-size:13px;color:var(--mut);margin-bottom:6px}
+.pend-head b{color:var(--ink)}
+.diff{font-size:13px;margin:3px 0;padding:6px 9px;background:var(--bg);border-radius:8px}
+.diff s{color:var(--warn);margin-right:6px}
+.diff b{color:var(--acc)}
+.pend-btns{display:flex;gap:8px;margin-top:9px}
+.pend-btns button{flex:1;border-radius:9px;padding:8px;font-weight:700;font-size:13.5px}
+.pend-btns .ok{background:#e2f5ee;color:var(--acc)}
+.pend-btns .no{background:#fdeeea;color:var(--warn)}
+.chkbox{max-height:170px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;background:#fff;padding:6px 10px}
+.chkbox label{display:block;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+.chkbox label:last-child{border-bottom:0}
+.chkbox input{margin-right:8px}
+.inv-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;font-size:13.5px}
+.inv-card small{color:var(--mut);display:block;margin-top:2px}
+.inv-act{display:flex;gap:8px;margin-top:8px}
+.inv-act button,.inv-act a{font-size:12.5px;font-weight:700;border-radius:8px;padding:6px 11px;background:var(--chip);color:var(--pri2);text-decoration:none}
+.inv-act .rev{background:#fdeeea;color:var(--warn)}
+#pendBadge:not(:empty){background:var(--warn);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;margin-left:4px}
+.srvnote{font-size:12px;color:var(--mut);text-align:center;padding:4px 10px}
+/* pivot */
+#pivotDims{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 4px;scrollbar-width:none}
+#pivotDims::-webkit-scrollbar{display:none}
+.pdim{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--pri2)}
+.pdim.on{background:var(--pri2);color:#fff;border-color:var(--pri2)}
+#pivotCrumb{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:6px 14px 0;font-size:12.5px;color:var(--mut)}
+#pivotCrumb:empty{display:none}
+#pivotCrumb button{color:var(--pri2);font-weight:700;padding:2px 4px}
+#pivot{padding:10px 12px}
+.prow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.prow .pname{flex:1;font-weight:700;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .pbar{flex:2;height:12px;background:var(--chip);border-radius:6px;overflow:hidden}
+.prow .pbar i{display:block;height:100%;background:var(--pri2);border-radius:6px}
+.prow .pcnt{font-weight:800;color:var(--pri2);font-size:14px;min-width:44px;text-align:right}
+.prow .pgo{font-size:12px;background:var(--chip);color:var(--pri2);border-radius:8px;padding:5px 9px;font-weight:700}
+/* ayarlar */
+#settings{padding:12px}
+.set-btn{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;text-align:left;font-size:15px;font-weight:600}
+.set-btn small{display:block;font-weight:400;font-size:12px;color:var(--mut);margin-top:3px}
+/* alt sekmeler */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:8px 0 7px;font-size:10.5px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button i{font-style:normal;font-size:20px}
+nav button.on{color:var(--pri2);font-weight:700}
+#fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:899;width:54px;height:54px;border-radius:99px;background:var(--acc);color:#fff;font-size:28px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+/* sheet / modal */
+.sheet{position:fixed;inset:0;z-index:1000;background:rgba(10,20,40,.45);display:none;align-items:flex-end}
+.sheet.on{display:flex}
+.sheet>div{background:var(--bg);width:100%;max-height:92vh;border-radius:18px 18px 0 0;overflow-y:auto;padding:16px 14px calc(20px + env(safe-area-inset-bottom))}
+.sh-head{display:flex;align-items:center;margin-bottom:12px}
+.sh-head h2{font-size:17px;flex:1}
+.sh-x{font-size:22px;color:var(--mut);padding:4px 10px}
+.frow{margin-bottom:10px}
+.frow label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:4px}
+.frow input,.frow select,.frow textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14.5px;background:#fff}
+.frow textarea{min-height:64px;resize:vertical}
+.btn{display:inline-block;border-radius:11px;padding:11px 16px;font-size:14.5px;font-weight:700;text-align:center;text-decoration:none}
+.btn.pri{background:var(--pri2);color:#fff}
+.btn.grn{background:var(--acc);color:#fff}
+.btn.red{background:#fdeeea;color:var(--warn)}
+.btn.gry{background:var(--chip);color:var(--pri2)}
+.btnrow{display:flex;gap:8px;margin-top:6px}
+.btnrow .btn{flex:1}
+/* detay */
+.d-head{display:flex;gap:10px;align-items:flex-start}
+.d-title{flex:1}
+.d-title h2{font-size:18px;line-height:1.25}
+.d-title p{color:var(--mut);font-size:13px;margin-top:3px}
+.d-acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.d-act{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--pri2);text-decoration:none}
+.d-act i{font-style:normal;display:block;font-size:19px;margin-bottom:3px}
+.d-act.dis{opacity:.35;pointer-events:none}
+.kv{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 13px;margin-bottom:10px}
+.kv dl{display:grid;grid-template-columns:108px 1fr;gap:0 10px}
+.kv dt{font-size:12px;color:var(--mut);padding:8px 0;border-bottom:1px solid var(--line)}
+.kv dd{font-size:13.5px;padding:8px 0;border-bottom:1px solid var(--line);word-break:break-word}
+.kv dl>:nth-last-child(-n+2){border-bottom:0}
+.vis-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13.5px}
+.vis-item small{color:var(--mut);display:block;margin-bottom:2px;font-size:11.5px}
+h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <span class="logo">MyDealer<small id="whoami">bayi rehberi</small></span>
+    <button id="btnSync" title="Sunucudan yenile" style="display:none;font-size:16px;padding:2px 8px">⟳</button>
+    <span id="count"></span>
+  </div>
+  <div class="srow">
+    <input id="q" type="search" placeholder="Bayi, tabela, il, ilçe, AVM, adres, telefon ara…" autocomplete="off">
+    <button id="btnFilter" title="Filtreler">⚙</button>
+  </div>
+</header>
+<div id="chips"></div>
+
+<main>
+  <section id="view-list" class="view on">
+    <div id="toolbar">
+      <button class="tbtn" id="btnNear">📍 Yakınımdakiler</button>
+      <button class="tbtn" id="btnFav">⭐ Favoriler</button>
+    </div>
+    <div id="list"></div>
+    <button id="more" hidden>Devamını göster</button>
+  </section>
+
+  <section id="view-map" class="view">
+    <div id="map"></div>
+    <div id="mapNote"></div>
+  </section>
+
+  <section id="view-pivot" class="view">
+    <div id="pivotDims"></div>
+    <div id="pivotCrumb"></div>
+    <div id="pivot"></div>
+  </section>
+
+  <section id="view-stats" class="view"><div id="stats"></div></section>
+
+  <section id="view-settings" class="view">
+    <div id="settings">
+      <div id="adminBox" style="display:none">
+        <button class="set-btn" id="btnPending" style="border-color:var(--acc)">✅ Onay Bekleyen Değişiklikler <b id="pendBadge"></b><small>Davetlilerin önerdiği değişiklikleri onaylayın veya reddedin</small></button>
+        <button class="set-btn" id="btnInvites">👥 Davet Yönetimi<small>Şehir/ilçe yetkili davet linki üretin, mevcut davetleri yönetin</small></button>
+      </div>
+      <div id="editorBox" style="display:none">
+        <button class="set-btn" id="btnMyPending">🕓 Onaya Gönderdiklerim<small>Önerdiğiniz değişikliklerin durumu</small></button>
+      </div>
+      <button class="set-btn" id="btnDriveBackup">☁️ Drive'a Yedekle<small>Ziyaret notları ve favoriler Google Drive'ınıza kaydedilir</small></button>
+      <button class="set-btn" id="btnDriveRestore">☁️ Drive'dan Geri Yükle<small>Drive'daki yedeklerden birini seçin; değişiklikler birleştirilir</small></button>
+      <button class="set-btn" id="btnBackup">📤 Yedekle (JSON indir)<small>Tüm bayiler + yaptığınız değişiklikler ve ziyaret notları tek dosyada</small></button>
+      <button class="set-btn" id="btnRestore">📥 Geri Yükle / Birleştir (dosyadan)<small>Yedek dosyasını seçin; değişiklikler birleştirilir</small></button>
+      <button class="set-btn" id="btnCsv">📊 Excel'e Aktar (CSV)<small>Güncel listeyi CSV olarak indirir, Excel'de açılır</small></button>
+      <button class="set-btn" id="btnReset">🗑️ Değişiklikleri Sıfırla<small>Eklenen/silinen/düzenlenen her şeyi ve ziyaretleri siler, orijinal Excel listesine döner</small></button>
+      <p style="font-size:12px;color:var(--mut);padding:6px 4px">Kaynak: BAYİ LİSTELERİ 2026 Temmuz (1.767 bayi). Veriler cihazınızda saklanır; yalnızca "Drive'a Yedekle" derseniz kendi Google Drive'ınıza gönderilir. Harita görüntüsü için internet gerekir (OpenStreetMap).</p>
+      <button id="btnDriveCfg" style="font-size:12px;color:var(--pri2);padding:4px;text-decoration:underline">Drive bağlantı ayarı (Client ID)</button>
+      <input type="file" id="fileRestore" accept=".json,application/json" hidden>
+    </div>
+  </section>
+</main>
+
+<button id="fab" title="Yeni bayi ekle">+</button>
+
+<nav>
+  <button data-v="list" class="on"><i>📋</i>Liste</button>
+  <button data-v="map"><i>🗺️</i>Harita</button>
+  <button data-v="pivot"><i>📊</i>Pivot</button>
+  <button data-v="stats"><i>📈</i>Özet</button>
+  <button data-v="settings"><i>⚙️</i>Ayarlar</button>
+</nav>
+
+<!-- filtre sheet -->
+<div class="sheet" id="shFilter"><div>
+  <div class="sh-head"><h2>Filtreler</h2><button class="sh-x" data-close="shFilter">✕</button></div>
+  <div class="frow"><label>Bölge</label><select id="fBolge"></select></div>
+  <div class="frow"><label>Şehir</label><select id="fSehir"></select></div>
+  <div class="frow"><label>İlçe</label><select id="fIlce"></select></div>
+  <div class="frow"><label>Segment</label><select id="fSeg"></select></div>
+  <div class="frow"><label>Durum</label><select id="fDurum"></select></div>
+  <div class="frow"><label><input type="checkbox" id="fKoord" style="width:auto;margin-right:6px">Sadece koordinatı olanlar (haritada görünür)</label></div>
+  <div class="frow"><label><input type="checkbox" id="fEksik" style="width:auto;margin-right:6px">Sadece eksik verili bayiler (adres/telefon yok)</label></div>
+  <div class="frow"><label><input type="checkbox" id="fZiyaretsiz" style="width:auto;margin-right:6px">Ziyaret notu olmayanlar</label></div>
+  <div class="btnrow">
+    <button class="btn gry" id="btnClearF">Temizle</button>
+    <button class="btn pri" data-close="shFilter">Uygula</button>
+  </div>
+</div></div>
+
+<!-- detay sheet -->
+<div class="sheet" id="shDetail"><div id="detailBody"></div></div>
+
+<!-- düzenle/ekle sheet -->
+<div class="sheet" id="shEdit"><div id="editBody"></div></div>
+
+<!-- drive yedek seçici sheet -->
+<div class="sheet" id="shDrive"><div id="driveBody"></div></div>
+
+<!-- onay bekleyenler sheet (admin) -->
+<div class="sheet" id="shPending"><div id="pendingBody"></div></div>
+
+<!-- davet yönetimi sheet (admin) -->
+<div class="sheet" id="shInvite"><div id="inviteBody"></div></div>
+
+<script src="data.js"></script>
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/markercluster.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
