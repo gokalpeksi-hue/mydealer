@@ -195,6 +195,15 @@ h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:upperc
 .hs .p{font-size:11.5px;font-weight:700}
 #homeMap{height:190px;background:var(--bg)}
 .hbub{border-radius:99px;color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.22)}
+.hpend{display:flex;width:100%;align-items:center;gap:11px;text-align:left;background:#fff3d6;border:1px solid #f0d090;border-radius:14px;padding:12px 13px;margin-bottom:10px}
+.hpend[hidden]{display:none}
+.hpend .n{flex:1;min-width:0}
+.hpend .n b{display:block;font-size:14px;font-weight:800;color:#8a5a00}
+.hpend .n span{font-size:12px;color:#9a6b00}
+.hpend .c{flex:0 0 auto;background:var(--warn);color:#fff;font-size:13px;font-weight:800;min-width:26px;height:26px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 7px}
+.navbdg{position:absolute;top:4px;margin-left:16px;background:var(--warn);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.navbdg[hidden]{display:none}
+nav button{position:relative}
 .hback{background:var(--chip);color:var(--pri2);font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;flex:0 0 auto}
 .hback[hidden]{display:none}
 .hcrumb{padding:7px 13px 0;font-size:12px;color:var(--mut);font-weight:700}
@@ -248,6 +257,7 @@ nav button i{font-size:18px}
 
 <main>
   <section id="view-home" class="view on">
+    <button id="hPend" class="hpend" hidden></button>
     <div class="hcard">
       <div class="hhead"><h3>Sorgu · pivot ile ara</h3><small id="hUpd"></small></div>
       <div class="hsel"><label>Bölge<select id="hBolge"></select></label><label>Şehir<select id="hSehir"></select></label><label>İlçe<select id="hIlce"></select></label></div>
@@ -323,7 +333,7 @@ nav button i{font-size:18px}
 <button id="fab" title="Yeni bayi ekle">+</button>
 
 <nav>
-  <button data-v="home" class="on"><i>🏠</i>Ana Sayfa</button>
+  <button data-v="home" class="on"><i>🏠</i>Ana Sayfa<b id="navPend" class="navbdg" hidden></b></button>
   <button data-v="list"><i>📋</i>Liste</button>
   <button data-v="map"><i>🗺️</i>Harita</button>
   <button data-v="pivot"><i>📊</i>Pivot</button>

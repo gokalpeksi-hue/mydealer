@@ -714,6 +714,7 @@ function applyRoleUI() {
   $('#pendBadge').textContent = SRV && SRV.pendingCount ? String(SRV.pendingCount) : '';
   $('#fab').style.display = (viewNow === 'list' || viewNow === 'home') ? '' : 'none';
   $('#btnHome').hidden = viewNow === 'home';
+  if (typeof hPending === 'function') hPending();
 }
 async function syncData(sessiz) {
   if (!TOKEN) return false;
@@ -979,13 +980,28 @@ function hGoList(dim, value) {
   renderList();
 }
 
+function hPending() {
+  const n = (SRV && isAdmin() && SRV.pendingCount) ? SRV.pendingCount : 0;
+  const el = $('#hPend'), bdg = $('#navPend');
+  el.hidden = !n;
+  bdg.hidden = !n;
+  if (n) {
+    bdg.textContent = n > 99 ? '99+' : String(n);
+    el.innerHTML = `<div class="n"><b>${hN(n)} değişiklik onayınızı bekliyor</b>
+      <span>Davetlilerin önerdiği düzenlemeler · dokunup inceleyin</span></div>
+      <span class="c">${hN(n)}</span>`;
+  }
+}
+
 function renderHome() {
   if (!allDealers().length) {
+    hPending();
     $('#hPivots').innerHTML = '';
     $('#hStats').innerHTML = '<div class="hempty">Bayi listesi yüklü değil. Liste sekmesinden yedeği geri yükleyin.</div>';
     $('#hDist').innerHTML = ''; $('#hQ').innerHTML = ''; $('#hMiss').innerHTML = ''; $('#hScope').innerHTML = '';
     return;
   }
+  hPending();
   const gs = hGroups();
   if (home.scope && !gs.some(g => g[0] === home.scope)) home.scope = '';
   const dimLabel = (HDIMS.find(d => d[0] === home.dim) || HDIMS[0])[1];
@@ -1178,7 +1194,16 @@ $('#hDrill').addEventListener('click', e => {
 function lvlLabel() {
   return home.stack.length ? 'Tüm bayiler' : 'Tüm liste';
 }
+$('#hPend').addEventListener('click', openPending);
 $('#hBack').addEventListener('click', hBack);
+
+/* onay kuyruğunu kendiliğinden tazele: sekmeye dönünce ve 3 dakikada bir */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && TOKEN) syncData(true);
+});
+setInterval(() => {
+  if (TOKEN && document.visibilityState === 'visible') syncData(true);
+}, 180000);
 $('#hActs').addEventListener('click', e => {
   const b = e.target.closest('[data-hact]'); if (!b) return;
   const a = b.dataset.hact;
