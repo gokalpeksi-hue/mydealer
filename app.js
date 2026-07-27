@@ -713,6 +713,7 @@ function applyRoleUI() {
   $('#whoami').textContent = SRV ? `${SRV.name} · ${isAdmin() ? 'yönetici' : 'saha'}` : 'bayi rehberi';
   $('#pendBadge').textContent = SRV && SRV.pendingCount ? String(SRV.pendingCount) : '';
   $('#fab').style.display = (viewNow === 'list' || viewNow === 'home') ? '' : 'none';
+  $('#btnHome').hidden = viewNow === 'home';
 }
 async function syncData(sessiz) {
   if (!TOKEN) return false;
@@ -750,6 +751,7 @@ document.querySelectorAll('nav button').forEach(btn => btn.addEventListener('cli
   viewNow = btn.dataset.v;
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + viewNow));
   $('#fab').style.display = (viewNow === 'list' || viewNow === 'home') ? '' : 'none';
+  $('#btnHome').hidden = viewNow === 'home';
   if (viewNow === 'map' && mapDirty) buildMap();
   else if (viewNow === 'map') setTimeout(() => map && map.invalidateSize(), 60);
   if (viewNow === 'stats') renderStats();
@@ -967,6 +969,16 @@ function renderHome() {
   if (home.scope && !gs.some(g => g[0] === home.scope)) home.scope = '';
   const dimLabel = (HDIMS.find(d => d[0] === home.dim) || HDIMS[0])[1];
 
+  const _all = allDealers();
+  const _uniq = k => [...new Set(_all.map(b => b[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+  fillSelect($('#hBolge'), _uniq('bolge'), F.bolge, 'Bölge');
+  fillSelect($('#hSehir'), F.bolge
+    ? [...new Set(_all.filter(b => b.bolge === F.bolge).map(b => b.sehir).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+    : _uniq('sehir'), F.sehir, 'Şehir');
+  fillSelect($('#hIlce'), F.sehir
+    ? [...new Set(_all.filter(b => b.sehir === F.sehir).map(b => b.ilce).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+    : [], F.ilce, F.sehir ? 'İlçe' : 'İlçe (önce şehir)');
+
   $('#hPivots').innerHTML = HDIMS.map(d =>
     `<button class="hp ${home.dim === d[0] ? 'on' : ''}" data-hdim="${d[0]}">${d[1]}</button>`).join('');
 
@@ -1063,6 +1075,10 @@ $('#hPivots').addEventListener('click', e => {
   const b = e.target.closest('[data-hdim]'); if (!b) return;
   home.dim = b.dataset.hdim; home.scope = ''; renderHome();
 });
+$('#hBolge').addEventListener('change', e => { F.bolge = e.target.value; F.sehir = ''; F.ilce = ''; home.scope = ''; buildFilters(); applyFilters(); });
+$('#hSehir').addEventListener('change', e => { F.sehir = e.target.value; F.ilce = ''; home.scope = ''; buildFilters(); applyFilters(); });
+$('#hIlce').addEventListener('change', e => { F.ilce = e.target.value; home.scope = ''; buildFilters(); applyFilters(); });
+$('#btnHome').addEventListener('click', () => document.querySelector('nav button[data-v="home"]').click());
 $('#hScope').addEventListener('change', e => { home.scope = e.target.value; renderHome(); });
 $('#hDist').addEventListener('click', e => {
   const tr = e.target.closest('[data-hrow]'); if (!tr) return;
