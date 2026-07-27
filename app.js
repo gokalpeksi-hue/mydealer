@@ -1076,7 +1076,7 @@ function renderHome() {
 
   if (lvl === 0) {
     $('#hDistTitle').textContent = dimLabel + ' seçin';
-    $('#hDrill').innerHTML = hAll('Tüm liste', dimLabel.toLocaleLowerCase('tr') + ' ayrımı olmadan hepsi') +
+    $('#hDrill').innerHTML = hAll('Tüm bayiler', dimLabel.toLocaleLowerCase('tr') + ' ayrımı olmadan hepsi') +
       (gs.length
         ? '<table class="htab"><thead><tr><th>' + esc(dimLabel) +
           '</th><th>Bayi</th><th>Aktif</th><th>A seg.</th></tr></thead><tbody>' +
@@ -1208,7 +1208,7 @@ $('#hDrill').addEventListener('click', e => {
   }
 });
 function lvlLabel() {
-  return home.stack.length ? 'Tüm bayiler' : 'Tüm liste';
+  return 'Tüm bayiler';
 }
 $('#hPend').addEventListener('click', openPending);
 $('#hBack').addEventListener('click', hBack);
