@@ -1044,41 +1044,56 @@ function renderHome() {
       <div class="v">${c[2]}</div><div class="p" style="color:${c[4]}">${c[3]}</div></div>`).join('');
 
   const _top = home.stack[home.stack.length - 1];
-  const lvl = (_top && _top.all) ? 2 : (F.ilce ? 2 : (home.stack.length ? 1 : 0));
+  let lvl;
+  if (_top && _top.all) lvl = 3;
+  else if (F.ilce) lvl = 3;
+  else if (F.sehir) lvl = 2;
+  else if (home.stack.length) lvl = 1;
+  else lvl = 0;
+
   $('#hBack').hidden = home.stack.length === 0;
   $('#hCrumb').innerHTML = home.stack.map(s => esc(s.label)).join(' › ');
 
-  if (lvl === 0) {
-    $('#hDistTitle').textContent = dimLabel + ' seçin';
-    const _tumu = `<div class="hrow2 all" data-hallrows="1">
-      <div class="n"><b>Tüm liste</b><span>${esc(dimLabel.toLocaleLowerCase('tr'))} ayrımı olmadan hepsi</span></div>
+  const hAll = (baslik, alt) => `<div class="hrow2 all" data-hallrows="1">
+      <div class="n"><b>${esc(baslik)}</b><span>${esc(alt)}</span></div>
       <span class="c">${hN(d.length)}</span><span class="go">›</span></div>`;
-    $('#hDrill').innerHTML = _tumu + (gs.length
-      ? '<table class="htab"><thead><tr><th>' + esc(dimLabel) +
-        '</th><th>Bayi</th><th>Aktif</th><th>A seg.</th></tr></thead><tbody>' +
-        gs.slice(0, 20).map(g => `<tr data-hgrp="${esc(g[0])}"><td>${esc(g[0])}</td>
-          <td>${hN(g[1].length)}</td><td>${hN(g[1].filter(hAktif).length)}</td>
-          <td>${hN(g[1].filter(hSegA).length)}</td></tr>`).join('') + '</tbody></table>'
-      : '<div class="hempty">Bu kırılımda kayıt yok.</div>');
 
-  } else if (lvl === 1) {
-    $('#hDistTitle').textContent = 'İlçe seçin';
+  const hGrupla = (alan) => {
     const m = new Map();
     for (const b of d) {
-      const s = b.sehir || '(boş)', i = b.ilce || '(boş)';
-      const k = s + '|' + i;
-      if (!m.has(k)) m.set(k, { s: s, i: i, arr: [] });
-      m.get(k).arr.push(b);
+      const k = b[alan] || '(boş)';
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(b);
     }
-    const rows = [...m.values()].sort((x, y) => y.arr.length - x.arr.length);
-    const _hepsi = `<div class="hrow2 all" data-hallrows="1">
-      <div class="n"><b>Tüm bayiler</b><span>ilçe ayrımı olmadan${home.stack.length ? ' · ' + esc(home.stack[home.stack.length - 1].label) : ''}</span></div>
-      <span class="c">${hN(d.length)}</span><span class="go">›</span></div>`;
-    $('#hDrill').innerHTML = _hepsi + (rows.length ? rows.map(r =>
-      `<div class="hrow2" data-hilce="${esc(r.i)}" data-hsehir="${esc(r.s)}">
-        <div class="n"><b>${esc(r.i)}</b><span>${esc(r.s)} · ${hN(r.arr.filter(hAktif).length)} aktif</span></div>
-        <span class="c">${hN(r.arr.length)}</span><span class="go">›</span></div>`).join('')
-      : '<div class="hempty">Bu kapsamda ilçe yok.</div>');
+    return [...m.entries()].sort((x, y) => y[1].length - x[1].length);
+  };
+
+  const hSatirlar = (rows, attr, bosMesaj) => rows.length ? rows.map(r =>
+    `<div class="hrow2" data-${attr}="${esc(r[0])}">
+      <div class="n"><b>${esc(r[0])}</b><span>${hN(r[1].filter(hAktif).length)} aktif · ${hN(r[1].filter(hSegA).length)} A segment</span></div>
+      <span class="c">${hN(r[1].length)}</span><span class="go">›</span></div>`).join('')
+    : `<div class="hempty">${bosMesaj}</div>`;
+
+  if (lvl === 0) {
+    $('#hDistTitle').textContent = dimLabel + ' seçin';
+    $('#hDrill').innerHTML = hAll('Tüm liste', dimLabel.toLocaleLowerCase('tr') + ' ayrımı olmadan hepsi') +
+      (gs.length
+        ? '<table class="htab"><thead><tr><th>' + esc(dimLabel) +
+          '</th><th>Bayi</th><th>Aktif</th><th>A seg.</th></tr></thead><tbody>' +
+          gs.slice(0, 20).map(g => `<tr data-hgrp="${esc(g[0])}"><td>${esc(g[0])}</td>
+            <td>${hN(g[1].length)}</td><td>${hN(g[1].filter(hAktif).length)}</td>
+            <td>${hN(g[1].filter(hSegA).length)}</td></tr>`).join('') + '</tbody></table>'
+        : '<div class="hempty">Bu kırılımda kayıt yok.</div>');
+
+  } else if (lvl === 1) {
+    $('#hDistTitle').textContent = 'İl seçin';
+    $('#hDrill').innerHTML = hAll('Tüm bayiler', 'il ayrımı olmadan · ' + (_top ? _top.label : '')) +
+      hSatirlar(hGrupla('sehir'), 'hsehir', 'Bu kapsamda il yok.');
+
+  } else if (lvl === 2) {
+    $('#hDistTitle').textContent = 'İlçe seçin';
+    $('#hDrill').innerHTML = hAll('Tüm bayiler', 'ilçe ayrımı olmadan · ' + esc(F.sehir)) +
+      hSatirlar(hGrupla('ilce'), 'hilce', 'Bu ilde ilçe kaydı yok.');
 
   } else {
     $('#hDistTitle').textContent = hN(d.length) + ' bayi';
@@ -1089,7 +1104,7 @@ function renderHome() {
         <div class="n"><b>${esc(b.tabela || b.unvan)}</b>
           <span>${esc([b.sehir, b.ilce, b.segment ? 'Segment ' + b.segment : ''].filter(Boolean).join(' · '))}</span></div>
         ${th ? `<a class="callq" href="${th}" data-stop>📞</a>` : ''}<span class="go">›</span></div>`;
-    }).join('') : '<div class="hempty">Bu ilçede bayi yok.</div>') +
+    }).join('') : '<div class="hempty">Bu kapsamda bayi yok.</div>') +
       (d.length > 60 ? `<div class="hempty">İlk 60 kayıt gösteriliyor · <b data-hall="1" style="color:var(--pri2)">tümünü listede aç</b></div>` : '');
   }
 
@@ -1182,9 +1197,10 @@ $('#hDrill').addEventListener('click', e => {
     hPush(o, grp.dataset.hgrp);
     return;
   }
+  const sh = e.target.closest('[data-hsehir]');
+  if (sh) { hPush({ sehir: sh.dataset.hsehir, ilce: '' }, sh.dataset.hsehir); return; }
   const il = e.target.closest('[data-hilce]');
-  if (il) { hPush({ sehir: il.dataset.hsehir, ilce: il.dataset.hilce },
-                  il.dataset.hsehir + ' · ' + il.dataset.hilce); return; }
+  if (il) { hPush({ ilce: il.dataset.hilce }, il.dataset.hilce); return; }
   const by = e.target.closest('[data-hbayi]');
   if (by) { openDetail(by.dataset.hbayi); return; }
   if (e.target.closest('[data-hall]')) {
