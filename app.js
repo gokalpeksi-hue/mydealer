@@ -937,6 +937,10 @@ function hBack() {
   if (e) e.keys.forEach(k => { F[k] = ''; });
   buildFilters(); applyFilters();
 }
+function hPushAll(label) {
+  home.stack.push({ keys: [], label: label || 'Tüm liste', all: true });
+  renderHome();
+}
 function hReset(keys, label) {
   home.stack = [];
   F.bolge = F.sehir = F.ilce = '';
@@ -1023,19 +1027,23 @@ function renderHome() {
     `<div class="hs"><em>${c[0]}</em><div class="l">${c[1]}</div>
       <div class="v">${c[2]}</div><div class="p" style="color:${c[4]}">${c[3]}</div></div>`).join('');
 
-  const lvl = F.ilce ? 2 : (home.stack.length ? 1 : 0);
+  const _top = home.stack[home.stack.length - 1];
+  const lvl = (_top && _top.all) ? 2 : (F.ilce ? 2 : (home.stack.length ? 1 : 0));
   $('#hBack').hidden = home.stack.length === 0;
   $('#hCrumb').innerHTML = home.stack.map(s => esc(s.label)).join(' › ');
 
   if (lvl === 0) {
     $('#hDistTitle').textContent = dimLabel + ' seçin';
-    $('#hDrill').innerHTML = gs.length
+    const _tumu = `<div class="hrow2 all" data-hallrows="1">
+      <div class="n"><b>Tüm liste</b><span>${esc(dimLabel.toLocaleLowerCase('tr'))} ayrımı olmadan hepsi</span></div>
+      <span class="c">${hN(d.length)}</span><span class="go">›</span></div>`;
+    $('#hDrill').innerHTML = _tumu + (gs.length
       ? '<table class="htab"><thead><tr><th>' + esc(dimLabel) +
         '</th><th>Bayi</th><th>Aktif</th><th>A seg.</th></tr></thead><tbody>' +
         gs.slice(0, 20).map(g => `<tr data-hgrp="${esc(g[0])}"><td>${esc(g[0])}</td>
           <td>${hN(g[1].length)}</td><td>${hN(g[1].filter(hAktif).length)}</td>
           <td>${hN(g[1].filter(hSegA).length)}</td></tr>`).join('') + '</tbody></table>'
-      : '<div class="hempty">Bu kırılımda kayıt yok.</div>';
+      : '<div class="hempty">Bu kırılımda kayıt yok.</div>');
 
   } else if (lvl === 1) {
     $('#hDistTitle').textContent = 'İlçe seçin';
@@ -1047,11 +1055,14 @@ function renderHome() {
       m.get(k).arr.push(b);
     }
     const rows = [...m.values()].sort((x, y) => y.arr.length - x.arr.length);
-    $('#hDrill').innerHTML = rows.length ? rows.map(r =>
+    const _hepsi = `<div class="hrow2 all" data-hallrows="1">
+      <div class="n"><b>Tüm bayiler</b><span>ilçe ayrımı olmadan${home.stack.length ? ' · ' + esc(home.stack[home.stack.length - 1].label) : ''}</span></div>
+      <span class="c">${hN(d.length)}</span><span class="go">›</span></div>`;
+    $('#hDrill').innerHTML = _hepsi + (rows.length ? rows.map(r =>
       `<div class="hrow2" data-hilce="${esc(r.i)}" data-hsehir="${esc(r.s)}">
         <div class="n"><b>${esc(r.i)}</b><span>${esc(r.s)} · ${hN(r.arr.filter(hAktif).length)} aktif</span></div>
         <span class="c">${hN(r.arr.length)}</span><span class="go">›</span></div>`).join('')
-      : '<div class="hempty">Bu kapsamda ilçe yok.</div>';
+      : '<div class="hempty">Bu kapsamda ilçe yok.</div>');
 
   } else {
     $('#hDistTitle').textContent = hN(d.length) + ' bayi';
@@ -1147,6 +1158,7 @@ $('#btnHome').addEventListener('click', () => document.querySelector('nav button
 $('#hScope').addEventListener('change', e => { home.scope = e.target.value; renderHome(); });
 $('#hDrill').addEventListener('click', e => {
   if (e.target.closest('[data-stop]')) return;
+  if (e.target.closest('[data-hallrows]')) { hPushAll(lvlLabel()); return; }
   const grp = e.target.closest('[data-hgrp]');
   if (grp) {
     const k = HFKEY[home.dim], o = {};
@@ -1163,6 +1175,9 @@ $('#hDrill').addEventListener('click', e => {
     document.querySelector('nav button[data-v="list"]').click(); renderList();
   }
 });
+function lvlLabel() {
+  return home.stack.length ? 'Tüm bayiler' : 'Tüm liste';
+}
 $('#hBack').addEventListener('click', hBack);
 $('#hActs').addEventListener('click', e => {
   const b = e.target.closest('[data-hact]'); if (!b) return;
