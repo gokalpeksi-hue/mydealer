@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#12325e">
 <title>MyDealer</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="vendor/leaflet.css">
 <link rel="stylesheet" href="vendor/markercluster.css">
@@ -26,6 +27,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 header{position:sticky;top:0;z-index:900;background:var(--pri);color:#fff;padding:10px 12px 8px;padding-top:calc(10px + env(safe-area-inset-top))}
 .hrow{display:flex;align-items:center;gap:8px}
 .logo{font-size:18px;font-weight:800;letter-spacing:.3px}
+.mark{flex:0 0 auto;width:26px;height:26px;display:block}
+.mark svg{width:100%;height:100%;display:block}
 .logo small{font-weight:400;opacity:.75;font-size:11px;margin-left:6px}
 #count{margin-left:auto;font-size:12px;background:rgba(255,255,255,.15);padding:3px 9px;border-radius:99px}
 .srow{display:flex;gap:8px;margin-top:8px}
@@ -213,7 +216,7 @@ nav button i{font-size:18px}
 <body>
 <header>
   <div class="hrow">
-    <span class="logo">MyDealer<small id="whoami">bayi rehberi</small></span>
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 512 512"><path d="M118 340a44 44 0 1 1 88 0c0 30-44 103-44 103S118 370 118 340z" fill="#4d84d6"/><path d="M306 340a44 44 0 1 1 88 0c0 30-44 103-44 103s-44-73-44-103z" fill="#4d84d6"/><path d="M134 210a122 122 0 1 1 244 0c0 84-122 292-122 292S134 294 134 210z" fill="#fff"/><circle cx="256" cy="210" r="58" fill="#0e8f6f"/></svg></span><span class="logo">MyDealer<small id="whoami">bayi rehberi</small></span>
     <button id="btnSync" title="Sunucudan yenile" style="display:none;font-size:16px;padding:2px 8px">⟳</button>
     <span id="count"></span>
   </div>

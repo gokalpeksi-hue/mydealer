@@ -1,7 +1,7 @@
 const CACHE = 'mydealer-v7';
 const ASSETS = [
   './', './index.html', './app.js', './data.js', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png',
+  './icon-192.png', './icon-512.png', './icon-maskable.png', './icon.svg',
   './vendor/leaflet.js', './vendor/leaflet.css',
   './vendor/markercluster.js', './vendor/markercluster.css', './vendor/markercluster.default.css'
 ];
