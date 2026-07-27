@@ -164,6 +164,50 @@ nav button.on{color:var(--pri2);font-weight:700}
 .vis-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13.5px}
 .vis-item small{color:var(--mut);display:block;margin-bottom:2px;font-size:11.5px}
 h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ---------- ana sayfa (dashboard) ---------- */
+#view-home{padding:12px 12px 0}
+.hcard{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.hhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px 13px 0}
+.hhead h3{font-size:14px;font-weight:800}
+.hhead small{font-size:11px;color:var(--mut);text-align:right;flex:0 0 auto}
+.hpivots{display:flex;gap:6px;overflow-x:auto;padding:10px 13px 11px;scrollbar-width:none}
+.hpivots::-webkit-scrollbar{display:none}
+.hp{flex:0 0 auto;background:var(--chip);color:var(--pri2);font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:99px;white-space:nowrap;border:1px solid transparent}
+.hp.on{background:var(--pri2);color:#fff;border-color:var(--pri2)}
+.hscope{padding:0 13px 11px}
+.hscope select{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;font-weight:700;background:var(--card)}
+.hstats{display:flex;gap:9px;overflow-x:auto;padding:0 13px 13px;scrollbar-width:none}
+.hstats::-webkit-scrollbar{display:none}
+.hs{flex:0 0 106px;background:var(--bg);border-radius:12px;padding:10px 11px}
+.hs em{font-style:normal;font-size:16px;line-height:1}
+.hs .l{font-size:11.5px;color:var(--mut);margin-top:6px}
+.hs .v{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
+.hs .p{font-size:11.5px;font-weight:700}
+#homeMap{height:190px;background:var(--bg)}
+.hbub{border-radius:99px;color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.22)}
+.htab{width:100%;border-collapse:collapse;font-size:13px}
+.htab th{font-size:11px;font-weight:600;color:var(--mut);text-align:right;padding:8px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+.htab th:first-child{text-align:left;padding-left:13px}
+.htab td{padding:10px 7px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.htab td:first-child{text-align:left;padding-left:13px;white-space:normal;font-weight:700}
+.htab tr.on td{background:#eaf1fb}
+.htab tr.on td:first-child{color:var(--pri2)}
+.hq{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 13px 10px}
+.hq>div{background:var(--bg);border-radius:12px;padding:10px}
+.hq .l{font-size:11.5px;color:var(--mut)}
+.hq .v{font-size:19px;font-weight:800;margin-top:2px}
+.hmiss{margin:0 13px 13px;border:1px solid var(--line);border-radius:12px;padding:1px 11px}
+.hmiss .r{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:13px}
+.hmiss .r+.r{border-top:1px solid var(--line)}
+.hmiss b{font-weight:800}
+.hacts{display:flex;gap:8px;overflow-x:auto;padding:0 13px 13px;scrollbar-width:none}
+.hacts::-webkit-scrollbar{display:none}
+.ha{flex:0 0 90px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 5px;text-align:center;font-size:11.5px;font-weight:700;line-height:1.3;color:var(--ink)}
+.ha em{font-style:normal;display:block;font-size:19px;margin-bottom:5px}
+.hempty{padding:26px 16px;text-align:center;color:var(--mut);font-size:13.5px}
+nav button{font-size:9.5px;padding:7px 0 6px}
+nav button i{font-size:18px}
 </style>
 </head>
 <body>
@@ -181,7 +225,37 @@ h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:upperc
 <div id="chips"></div>
 
 <main>
-  <section id="view-list" class="view on">
+  <section id="view-home" class="view on">
+    <div class="hcard">
+      <div class="hhead"><h3>Sorgu · pivot ile ara</h3><small id="hUpd"></small></div>
+      <div class="hpivots" id="hPivots"></div>
+      <div class="hscope"><select id="hScope" aria-label="Seçili kırılım"></select></div>
+      <div class="hstats" id="hStats"></div>
+    </div>
+
+    <div class="hcard"><div id="homeMap"></div></div>
+
+    <div class="hcard">
+      <div class="hhead"><h3 id="hDistTitle">Dağılım</h3><small>satıra dokun · tekrar dokun listeye git</small></div>
+      <div style="overflow-x:auto"><table class="htab">
+        <thead><tr><th id="hDimTh">Kırılım</th><th>Bayi</th><th>Aktif</th><th>A seg.</th><th>Koord.</th></tr></thead>
+        <tbody id="hDist"></tbody>
+      </table></div>
+    </div>
+
+    <div class="hcard">
+      <div class="hhead"><h3>Veri kalitesi</h3><small id="hQScope"></small></div>
+      <div class="hq" id="hQ"></div>
+      <div class="hmiss" id="hMiss"></div>
+    </div>
+
+    <div class="hcard">
+      <div class="hhead"><h3>Yeni kayıt ve hızlı işlemler</h3></div>
+      <div class="hacts" id="hActs"></div>
+    </div>
+  </section>
+
+  <section id="view-list" class="view">
     <div id="toolbar">
       <button class="tbtn" id="btnNear">📍 Yakınımdakiler</button>
       <button class="tbtn" id="btnFav">⭐ Favoriler</button>
@@ -228,7 +302,8 @@ h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:upperc
 <button id="fab" title="Yeni bayi ekle">+</button>
 
 <nav>
-  <button data-v="list" class="on"><i>📋</i>Liste</button>
+  <button data-v="home" class="on"><i>🏠</i>Ana Sayfa</button>
+  <button data-v="list"><i>📋</i>Liste</button>
   <button data-v="map"><i>🗺️</i>Harita</button>
   <button data-v="pivot"><i>📊</i>Pivot</button>
   <button data-v="stats"><i>📈</i>Özet</button>

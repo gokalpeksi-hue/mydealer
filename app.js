@@ -347,7 +347,7 @@ async function saveEdit(id) {
 }
 
 /* ---------- harita ---------- */
-let map = null, cluster = null, mapDirty = true, viewNow = 'list';
+let map = null, cluster = null, mapDirty = true, viewNow = 'home';
 function buildMap() {
   if (!map) {
     map = L.map('map', { zoomControl: true }).setView([39.0, 34.5], 6);
@@ -712,7 +712,7 @@ function applyRoleUI() {
   $('#btnSync').style.display = SRV ? '' : 'none';
   $('#whoami').textContent = SRV ? `${SRV.name} · ${isAdmin() ? 'yönetici' : 'saha'}` : 'bayi rehberi';
   $('#pendBadge').textContent = SRV && SRV.pendingCount ? String(SRV.pendingCount) : '';
-  $('#fab').style.display = viewNow === 'list' ? '' : 'none';
+  $('#fab').style.display = (viewNow === 'list' || viewNow === 'home') ? '' : 'none';
 }
 async function syncData(sessiz) {
   if (!TOKEN) return false;
@@ -725,6 +725,7 @@ async function syncData(sessiz) {
     if (viewNow === 'map') buildMap();
     if (viewNow === 'stats') renderStats();
     if (viewNow === 'pivot') renderPivot();
+    if (viewNow === 'home') renderHome();
     return true;
   } catch (e) {
     if (e.status === 401) {
@@ -748,17 +749,18 @@ document.querySelectorAll('nav button').forEach(btn => btn.addEventListener('cli
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b === btn));
   viewNow = btn.dataset.v;
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + viewNow));
-  $('#fab').style.display = viewNow === 'list' ? '' : 'none';
+  $('#fab').style.display = (viewNow === 'list' || viewNow === 'home') ? '' : 'none';
   if (viewNow === 'map' && mapDirty) buildMap();
   else if (viewNow === 'map') setTimeout(() => map && map.invalidateSize(), 60);
   if (viewNow === 'stats') renderStats();
   if (viewNow === 'pivot') renderPivot();
+  if (viewNow === 'home') renderHome();
 }));
 
 let qTimer;
 $('#q').addEventListener('input', e => {
   clearTimeout(qTimer);
-  qTimer = setTimeout(() => { F.q = e.target.value; shown = PAGE; mapDirty = true; renderList(); if (viewNow === 'map') buildMap(); }, 200);
+  qTimer = setTimeout(() => { F.q = e.target.value; shown = PAGE; mapDirty = true; renderList(); if (viewNow === 'map') buildMap(); if (viewNow === 'home') renderHome(); }, 200);
 });
 $('#more').addEventListener('click', () => { shown += PAGE; renderList(); });
 $('#btnFilter').addEventListener('click', () => { buildFilters(); $('#shFilter').classList.add('on'); });
@@ -766,7 +768,7 @@ $('#btnClearF').addEventListener('click', () => {
   F.bolge = F.sehir = F.ilce = F.seg = F.durum = ''; F.koord = F.eksik = F.ziyaretsiz = false;
   buildFilters(); applyFilters();
 });
-function applyFilters() { shown = PAGE; mapDirty = true; renderList(); if (viewNow === 'map') buildMap(); }
+function applyFilters() { shown = PAGE; mapDirty = true; renderList(); if (viewNow === 'map') buildMap(); if (viewNow === 'home') renderHome(); }
 $('#fBolge').addEventListener('change', e => { F.bolge = e.target.value; F.sehir = ''; F.ilce = ''; buildFilters(); applyFilters(); });
 $('#fSehir').addEventListener('change', e => { F.sehir = e.target.value; F.ilce = ''; buildFilters(); applyFilters(); });
 $('#fIlce').addEventListener('change', e => { F.ilce = e.target.value; applyFilters(); });
@@ -917,4 +919,172 @@ $('#btnMyPending').addEventListener('click', async () => { await syncData(true);
 renderList();
 applyRoleUI();
 if (TOKEN) syncData(true).then(ok => { if (!ok) renderList(); }); // çevrimiçi mod (başarısızsa giriş paneli)
+/* ================= ana sayfa (dashboard) ================= */
+const HDIMS = [['bolge', 'Bölge'], ['sehir', 'Şehir'], ['ilce', 'İlçe'],
+               ['segment', 'Segment'], ['durum', 'Durum'], ['mudur', 'Bölge Müdürü']];
+const home = { dim: 'bolge', scope: '' };
+let hmap = null, hlayer = null;
+
+const hN = n => Number(n || 0).toLocaleString('tr-TR');
+const hP = (a, b) => b ? (a * 100 / b).toFixed(1).replace('.', ',') : '0,0';
+const hAktif = b => String(b.durum || '').toUpperCase().indexOf('KAPALI') < 0;
+const hSegA = b => String(b.segment || '').toUpperCase().charAt(0) === 'A';
+const hZiy = b => (ov.visits[b.id] || []).length > 0;
+
+function hGroups() {
+  const m = new Map();
+  for (const b of filtered()) {
+    const k = b[home.dim] || '(boş)';
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(b);
+  }
+  return [...m.entries()].sort((a, b) => b[1].length - a[1].length);
+}
+function hScoped() {
+  const f = filtered();
+  return home.scope ? f.filter(b => (b[home.dim] || '(boş)') === home.scope) : f;
+}
+function hGoList(dim, value) {
+  F.bolge = F.sehir = F.ilce = F.seg = '';
+  if (dim === 'bolge') F.bolge = value === '(boş)' ? '' : value;
+  if (dim === 'sehir') F.sehir = value === '(boş)' ? '' : value;
+  if (dim === 'ilce') F.ilce = value === '(boş)' ? '' : value;
+  if (dim === 'segment') F.seg = value === '(boş)' ? '' : value;
+  if (dim === 'durum') F.durum = value === '(boş)' ? '' : value;
+  buildFilters(); shown = PAGE; mapDirty = true;
+  document.querySelector('nav button[data-v="list"]').click();
+  renderList();
+}
+
+function renderHome() {
+  if (!allDealers().length) {
+    $('#hPivots').innerHTML = '';
+    $('#hStats').innerHTML = '<div class="hempty">Bayi listesi yüklü değil. Liste sekmesinden yedeği geri yükleyin.</div>';
+    $('#hDist').innerHTML = ''; $('#hQ').innerHTML = ''; $('#hMiss').innerHTML = ''; $('#hScope').innerHTML = '';
+    return;
+  }
+  const gs = hGroups();
+  if (home.scope && !gs.some(g => g[0] === home.scope)) home.scope = '';
+  const dimLabel = (HDIMS.find(d => d[0] === home.dim) || HDIMS[0])[1];
+
+  $('#hPivots').innerHTML = HDIMS.map(d =>
+    `<button class="hp ${home.dim === d[0] ? 'on' : ''}" data-hdim="${d[0]}">${d[1]}</button>`).join('');
+
+  $('#hScope').innerHTML = `<option value="">Tümü — ${hN(filtered().length)} bayi</option>` +
+    gs.map(g => `<option value="${esc(g[0])}"${g[0] === home.scope ? ' selected' : ''}>${esc(g[0])} (${hN(g[1].length)})</option>`).join('');
+
+  $('#hUpd').innerHTML = SRV
+    ? 'Sunucu listesi<br>' + esc(String(SRV.updated || '').slice(0, 16))
+    : 'Cihazdaki liste<br>' + hN(allDealers().length) + ' kayıt';
+
+  const d = hScoped(), t = d.length;
+  const akt = d.filter(hAktif).length, sga = d.filter(hSegA).length;
+  const koo = d.filter(b => b.lat).length;
+  const ziy = d.filter(hZiy).length;
+  const tam = d.filter(b => b.adres && b.tel).length;
+  const cards = [
+    ['🏪', 'Toplam bayi', hN(t), '', 'var(--pri2)'],
+    ['✅', 'Aktif', hN(akt), '%' + hP(akt, t), 'var(--acc)'],
+    ['⭐', 'A segment', hN(sga), '%' + hP(sga, t), 'var(--segC)'],
+    ['📍', 'Koordinatlı', hN(koo), '%' + hP(koo, t), 'var(--segB)'],
+    ['🗓️', 'Ziyaret edilen', hN(ziy), '%' + hP(ziy, t), 'var(--segD)'],
+    ['✔️', 'Eksiksiz', hN(tam), '%' + hP(tam, t), 'var(--pri2)']
+  ];
+  $('#hStats').innerHTML = cards.map(c =>
+    `<div class="hs"><em>${c[0]}</em><div class="l">${c[1]}</div>
+      <div class="v">${c[2]}</div><div class="p" style="color:${c[4]}">${c[3]}</div></div>`).join('');
+
+  $('#hDistTitle').textContent = dimLabel + ' dağılımı';
+  $('#hDimTh').textContent = dimLabel;
+  $('#hDist').innerHTML = gs.length ? gs.slice(0, 15).map(g =>
+    `<tr class="${g[0] === home.scope ? 'on' : ''}" data-hrow="${esc(g[0])}">
+      <td>${esc(g[0])}</td><td>${hN(g[1].length)}</td>
+      <td>${hN(g[1].filter(hAktif).length)}</td>
+      <td>${hN(g[1].filter(hSegA).length)}</td>
+      <td>${hN(g[1].filter(b => b.lat).length)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="hempty">Bu kırılımda kayıt yok.</td></tr>';
+
+  $('#hQScope').textContent = home.scope || 'tüm liste';
+  const kismi = d.filter(b => (!b.adres || !b.tel) && (b.adres || b.tel)).length;
+  const bos = d.filter(b => !b.adres && !b.tel).length;
+  const qs = [['Eksiksiz', tam, 'var(--acc)'], ['Eksik bilgi', kismi, 'var(--segC)'], ['Tamamlanmalı', bos, 'var(--warn)']];
+  $('#hQ').innerHTML = qs.map(q =>
+    `<div><div class="l">${q[0]}</div><div class="v">${hN(q[1])}</div>
+      <div class="p" style="color:${q[2]};font-size:11.5px;font-weight:700">%${hP(q[1], t)}</div></div>`).join('');
+
+  const miss = [['Telefon yok', d.filter(b => !b.tel).length, 'tel'],
+                ['Adres yok', d.filter(b => !b.adres).length, 'adres'],
+                ['Koordinat yok', d.filter(b => !b.lat).length, 'koord'],
+                ['Segment yok', d.filter(b => !b.segment).length, 'segment'],
+                ['Ziyaret notu yok', d.filter(b => !hZiy(b)).length, 'ziyaret']];
+  $('#hMiss').innerHTML = miss.map(m =>
+    `<div class="r"><span>${m[0]}</span><b style="color:${m[1] ? 'var(--warn)' : 'var(--mut)'}">${hN(m[1])}</b></div>`).join('');
+
+  const acts = [['➕', 'Yeni bayi', 'add'], ['⚠️', 'Eksikleri gör', 'eksik'],
+                ['🕓', 'Ziyaretsizler', 'ziyaretsiz'], ['⭐', 'Favoriler', 'fav'],
+                ['📍', 'Yakınımdakiler', 'near'], ['📊', 'CSV indir', 'csv']];
+  $('#hActs').innerHTML = acts.map(a => `<button class="ha" data-hact="${a[2]}"><em>${a[0]}</em>${a[1]}</button>`).join('');
+
+  renderHomeMap(gs);
+}
+
+function renderHomeMap(gs) {
+  if (typeof L === 'undefined') return;
+  try {
+    if (!hmap) {
+      hmap = L.map('homeMap', { zoomControl: false, attributionControl: false }).setView([39.0, 34.5], 5);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(hmap);
+    }
+    if (hlayer) hmap.removeLayer(hlayer);
+    hlayer = L.layerGroup().addTo(hmap);
+    const pts = [];
+    for (const [k, arr] of gs.slice(0, 40)) {
+      const c = arr.filter(b => b.lat && b.lon);
+      if (!c.length) continue;
+      const la = c.reduce((s, b) => s + Number(b.lat), 0) / c.length;
+      const lo = c.reduce((s, b) => s + Number(b.lon), 0) / c.length;
+      const sz = Math.max(30, Math.min(54, 24 + Math.log2(arr.length + 1) * 5));
+      const col = k === home.scope ? 'var(--warn)' : 'var(--pri2)';
+      L.marker([la, lo], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="hbub" style="width:${sz}px;height:${sz}px;background:${col}">${arr.length}</div>`,
+          iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2]
+        })
+      }).bindTooltip(k).on('click', () => { home.scope = k; renderHome(); }).addTo(hlayer);
+      pts.push([la, lo]);
+    }
+    if (pts.length) hmap.fitBounds(pts, { padding: [26, 26], maxZoom: 9 });
+    setTimeout(() => hmap.invalidateSize(), 80);
+  } catch (e) {}
+}
+
+$('#hPivots').addEventListener('click', e => {
+  const b = e.target.closest('[data-hdim]'); if (!b) return;
+  home.dim = b.dataset.hdim; home.scope = ''; renderHome();
+});
+$('#hScope').addEventListener('change', e => { home.scope = e.target.value; renderHome(); });
+$('#hDist').addEventListener('click', e => {
+  const tr = e.target.closest('[data-hrow]'); if (!tr) return;
+  const v = tr.dataset.hrow;
+  if (home.scope === v) hGoList(home.dim, v);
+  else { home.scope = v; renderHome(); }
+});
+$('#hActs').addEventListener('click', e => {
+  const b = e.target.closest('[data-hact]'); if (!b) return;
+  const a = b.dataset.hact;
+  if (a === 'add') { openEdit(''); return; }
+  if (a === 'csv') { csvExport(); return; }
+  F.eksik = F.ziyaretsiz = F.fav = false;
+  if (a === 'eksik') F.eksik = true;
+  if (a === 'ziyaretsiz') F.ziyaretsiz = true;
+  if (a === 'fav') { F.fav = true; $('#btnFav').classList.add('on'); }
+  buildFilters(); shown = PAGE; mapDirty = true;
+  document.querySelector('nav button[data-v="list"]').click();
+  if (a === 'near') { $('#btnNear').click(); return; }
+  renderList();
+});
+
+renderHome();
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
