@@ -1129,24 +1129,58 @@ function renderHome() {
                 ['📍', 'Yakınımdakiler', 'near'], ['📊', 'CSV indir', 'csv']];
   $('#hActs').innerHTML = acts.map(a => `<button class="ha" data-hact="${a[2]}"><em>${a[0]}</em>${a[1]}</button>`).join('');
 
-  renderHomeMap(gs);
+  renderHomeMap(gs, d);
 }
 
-function renderHomeMap(gs) {
+function hMedyan(arr) {
+  const s = arr.slice().sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function renderHomeMap(gs, d) {
   if (typeof L === 'undefined') return;
   try {
     if (!hmap) {
       hmap = L.map('homeMap', { zoomControl: false, attributionControl: false }).setView([39.0, 34.5], 5);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(hmap);
     }
-    if (hlayer) hmap.removeLayer(hlayer);
+    if (hlayer) { hmap.removeLayer(hlayer); hlayer = null; }
+
+    const koordlu = d.filter(b => b.lat && b.lon);
+
+    // Kapsam yeterince daraldıysa gerçek bayi iğneleri.
+    // Geniş kapsamda tek tek iğne hem ağır olur hem okunmaz; orada grup balonu kullanılır.
+    if (koordlu.length && koordlu.length <= 500) {
+      hlayer = L.markerClusterGroup
+        ? L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 })
+        : L.layerGroup();
+      for (const b of koordlu) {
+        L.marker([b.lat, b.lon], {
+          icon: L.divIcon({
+            className: '',
+            html: `<div class="mpin" style="width:16px;height:16px;background:${segColor(b.segment)}"></div>`,
+            iconSize: [16, 16], iconAnchor: [8, 8]
+          })
+        }).bindPopup(`<div class="pop-name">${esc(b.tabela || b.unvan)}</div>
+          <div style="color:#667">${esc([b.sehir, b.ilce, b.segment ? 'Segment ' + b.segment : ''].filter(Boolean).join(' · '))}</div>
+          <div class="pop-btns"><button onclick="openDetail('${b.id}')">Detay</button>${telHref(b.tel) ? `<a href="${telHref(b.tel)}">📞 Ara</a>` : ''}</div>`)
+          .addTo(hlayer);
+      }
+      hmap.addLayer(hlayer);
+      hmap.fitBounds(koordlu.map(b => [b.lat, b.lon]), { padding: [26, 26], maxZoom: 14 });
+      setTimeout(() => hmap.invalidateSize(), 80);
+      return;
+    }
+
+    // Geniş kapsam: kırılım başına tek balon. Merkez için ortalama değil medyan —
+    // bir bölgenin bayileri iki uca yığıldığında ortalama boş araziye düşüyor.
     hlayer = L.layerGroup().addTo(hmap);
     const pts = [];
     for (const [k, arr] of gs.slice(0, 40)) {
       const c = arr.filter(b => b.lat && b.lon);
       if (!c.length) continue;
-      const la = c.reduce((s, b) => s + Number(b.lat), 0) / c.length;
-      const lo = c.reduce((s, b) => s + Number(b.lon), 0) / c.length;
+      const la = hMedyan(c.map(b => Number(b.lat)));
+      const lo = hMedyan(c.map(b => Number(b.lon)));
       const sz = Math.max(30, Math.min(54, 24 + Math.log2(arr.length + 1) * 5));
       const col = k === home.scope ? 'var(--warn)' : 'var(--pri2)';
       L.marker([la, lo], {
@@ -1155,7 +1189,11 @@ function renderHomeMap(gs) {
           html: `<div class="hbub" style="width:${sz}px;height:${sz}px;background:${col}">${arr.length}</div>`,
           iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2]
         })
-      }).bindTooltip(k).on('click', () => { home.scope = k; renderHome(); }).addTo(hlayer);
+      }).bindTooltip(k).on('click', () => {
+        const key = HFKEY[home.dim], o = {};
+        o[key] = k === '(boş)' ? '' : k;
+        hPush(o, k);
+      }).addTo(hlayer);
       pts.push([la, lo]);
     }
     if (pts.length) hmap.fitBounds(pts, { padding: [26, 26], maxZoom: 9 });
