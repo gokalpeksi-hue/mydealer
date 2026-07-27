@@ -923,8 +923,25 @@ applyRoleUI();
 if (TOKEN) syncData(true).then(ok => { if (!ok) renderList(); }); // çevrimiçi mod (başarısızsa giriş paneli)
 /* ================= ana sayfa (dashboard) ================= */
 const HDIMS = [['bolge', 'Bölge'], ['sehir', 'Şehir'], ['ilce', 'İlçe'],
-               ['segment', 'Segment'], ['durum', 'Durum'], ['mudur', 'Bölge Müdürü']];
-const home = { dim: 'bolge', scope: '' };
+               ['segment', 'Segment'], ['durum', 'Durum']];
+const HFKEY = { bolge: 'bolge', sehir: 'sehir', ilce: 'ilce', segment: 'seg', durum: 'durum' };
+const home = { dim: 'bolge', scope: '', stack: [] };
+
+function hPush(keys, label) {
+  home.stack.push({ keys: Object.keys(keys), label: label });
+  Object.assign(F, keys);
+  buildFilters(); applyFilters();
+}
+function hBack() {
+  const e = home.stack.pop();
+  if (e) e.keys.forEach(k => { F[k] = ''; });
+  buildFilters(); applyFilters();
+}
+function hReset(keys, label) {
+  home.stack = [];
+  F.bolge = F.sehir = F.ilce = '';
+  if (label) hPush(keys, label); else { buildFilters(); applyFilters(); }
+}
 let hmap = null, hlayer = null;
 
 const hN = n => Number(n || 0).toLocaleString('tr-TR');
@@ -1006,15 +1023,48 @@ function renderHome() {
     `<div class="hs"><em>${c[0]}</em><div class="l">${c[1]}</div>
       <div class="v">${c[2]}</div><div class="p" style="color:${c[4]}">${c[3]}</div></div>`).join('');
 
-  $('#hDistTitle').textContent = dimLabel + ' dağılımı';
-  $('#hDimTh').textContent = dimLabel;
-  $('#hDist').innerHTML = gs.length ? gs.slice(0, 15).map(g =>
-    `<tr class="${g[0] === home.scope ? 'on' : ''}" data-hrow="${esc(g[0])}">
-      <td>${esc(g[0])}</td><td>${hN(g[1].length)}</td>
-      <td>${hN(g[1].filter(hAktif).length)}</td>
-      <td>${hN(g[1].filter(hSegA).length)}</td>
-      <td>${hN(g[1].filter(b => b.lat).length)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="hempty">Bu kırılımda kayıt yok.</td></tr>';
+  const lvl = F.ilce ? 2 : (home.stack.length ? 1 : 0);
+  $('#hBack').hidden = home.stack.length === 0;
+  $('#hCrumb').innerHTML = home.stack.map(s => esc(s.label)).join(' › ');
+
+  if (lvl === 0) {
+    $('#hDistTitle').textContent = dimLabel + ' seçin';
+    $('#hDrill').innerHTML = gs.length
+      ? '<table class="htab"><thead><tr><th>' + esc(dimLabel) +
+        '</th><th>Bayi</th><th>Aktif</th><th>A seg.</th></tr></thead><tbody>' +
+        gs.slice(0, 20).map(g => `<tr data-hgrp="${esc(g[0])}"><td>${esc(g[0])}</td>
+          <td>${hN(g[1].length)}</td><td>${hN(g[1].filter(hAktif).length)}</td>
+          <td>${hN(g[1].filter(hSegA).length)}</td></tr>`).join('') + '</tbody></table>'
+      : '<div class="hempty">Bu kırılımda kayıt yok.</div>';
+
+  } else if (lvl === 1) {
+    $('#hDistTitle').textContent = 'İlçe seçin';
+    const m = new Map();
+    for (const b of d) {
+      const s = b.sehir || '(boş)', i = b.ilce || '(boş)';
+      const k = s + '|' + i;
+      if (!m.has(k)) m.set(k, { s: s, i: i, arr: [] });
+      m.get(k).arr.push(b);
+    }
+    const rows = [...m.values()].sort((x, y) => y.arr.length - x.arr.length);
+    $('#hDrill').innerHTML = rows.length ? rows.map(r =>
+      `<div class="hrow2" data-hilce="${esc(r.i)}" data-hsehir="${esc(r.s)}">
+        <div class="n"><b>${esc(r.i)}</b><span>${esc(r.s)} · ${hN(r.arr.filter(hAktif).length)} aktif</span></div>
+        <span class="c">${hN(r.arr.length)}</span><span class="go">›</span></div>`).join('')
+      : '<div class="hempty">Bu kapsamda ilçe yok.</div>';
+
+  } else {
+    $('#hDistTitle').textContent = hN(d.length) + ' bayi';
+    const list = d.slice(0, 60);
+    $('#hDrill').innerHTML = (list.length ? list.map(b => {
+      const th = telHref(b.tel);
+      return `<div class="hrow2" data-hbayi="${esc(b.id)}">
+        <div class="n"><b>${esc(b.tabela || b.unvan)}</b>
+          <span>${esc([b.sehir, b.ilce, b.segment ? 'Segment ' + b.segment : ''].filter(Boolean).join(' · '))}</span></div>
+        ${th ? `<a class="callq" href="${th}" data-stop>📞</a>` : ''}<span class="go">›</span></div>`;
+    }).join('') : '<div class="hempty">Bu ilçede bayi yok.</div>') +
+      (d.length > 60 ? `<div class="hempty">İlk 60 kayıt gösteriliyor · <b data-hall="1" style="color:var(--pri2)">tümünü listede aç</b></div>` : '');
+  }
 
   $('#hQScope').textContent = home.scope || 'tüm liste';
   const kismi = d.filter(b => (!b.adres || !b.tel) && (b.adres || b.tel)).length;
@@ -1073,19 +1123,47 @@ function renderHomeMap(gs) {
 
 $('#hPivots').addEventListener('click', e => {
   const b = e.target.closest('[data-hdim]'); if (!b) return;
-  home.dim = b.dataset.hdim; home.scope = ''; renderHome();
+  home.dim = b.dataset.hdim; home.scope = ''; hReset({}, null);
 });
-$('#hBolge').addEventListener('change', e => { F.bolge = e.target.value; F.sehir = ''; F.ilce = ''; home.scope = ''; buildFilters(); applyFilters(); });
-$('#hSehir').addEventListener('change', e => { F.sehir = e.target.value; F.ilce = ''; home.scope = ''; buildFilters(); applyFilters(); });
-$('#hIlce').addEventListener('change', e => { F.ilce = e.target.value; home.scope = ''; buildFilters(); applyFilters(); });
+$('#hBolge').addEventListener('change', e => {
+  const v = e.target.value;
+  hReset({ bolge: v }, v || null);
+});
+$('#hSehir').addEventListener('change', e => {
+  const v = e.target.value;
+  home.stack = home.stack.filter(s => s.keys.indexOf('bolge') >= 0);
+  F.sehir = v; F.ilce = '';
+  if (v) home.stack.push({ keys: ['sehir', 'ilce'], label: v });
+  buildFilters(); applyFilters();
+});
+$('#hIlce').addEventListener('change', e => {
+  const v = e.target.value;
+  home.stack = home.stack.filter(s => s.keys.indexOf('ilce') < 0);
+  F.ilce = v;
+  if (v) home.stack.push({ keys: ['ilce'], label: v });
+  buildFilters(); applyFilters();
+});
 $('#btnHome').addEventListener('click', () => document.querySelector('nav button[data-v="home"]').click());
 $('#hScope').addEventListener('change', e => { home.scope = e.target.value; renderHome(); });
-$('#hDist').addEventListener('click', e => {
-  const tr = e.target.closest('[data-hrow]'); if (!tr) return;
-  const v = tr.dataset.hrow;
-  if (home.scope === v) hGoList(home.dim, v);
-  else { home.scope = v; renderHome(); }
+$('#hDrill').addEventListener('click', e => {
+  if (e.target.closest('[data-stop]')) return;
+  const grp = e.target.closest('[data-hgrp]');
+  if (grp) {
+    const k = HFKEY[home.dim], o = {};
+    o[k] = grp.dataset.hgrp === '(boş)' ? '' : grp.dataset.hgrp;
+    hPush(o, grp.dataset.hgrp);
+    return;
+  }
+  const il = e.target.closest('[data-hilce]');
+  if (il) { hPush({ sehir: il.dataset.hsehir, ilce: il.dataset.hilce },
+                  il.dataset.hsehir + ' · ' + il.dataset.hilce); return; }
+  const by = e.target.closest('[data-hbayi]');
+  if (by) { openDetail(by.dataset.hbayi); return; }
+  if (e.target.closest('[data-hall]')) {
+    document.querySelector('nav button[data-v="list"]').click(); renderList();
+  }
 });
+$('#hBack').addEventListener('click', hBack);
 $('#hActs').addEventListener('click', e => {
   const b = e.target.closest('[data-hact]'); if (!b) return;
   const a = b.dataset.hact;

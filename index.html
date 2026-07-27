@@ -195,6 +195,17 @@ h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:upperc
 .hs .p{font-size:11.5px;font-weight:700}
 #homeMap{height:190px;background:var(--bg)}
 .hbub{border-radius:99px;color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.22)}
+.hback{background:var(--chip);color:var(--pri2);font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;flex:0 0 auto}
+.hback[hidden]{display:none}
+.hcrumb{padding:7px 13px 0;font-size:12px;color:var(--mut);font-weight:700}
+.hcrumb:empty{display:none}
+.hrow2{display:flex;align-items:center;gap:10px;padding:11px 13px;border-top:1px solid var(--line)}
+.hrow2 .n{flex:1;min-width:0}
+.hrow2 .n b{display:block;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow2 .n span{font-size:11.5px;color:var(--mut)}
+.hrow2 .c{font-size:13px;font-weight:800;color:var(--pri2);flex:0 0 auto}
+.hrow2 .go{color:var(--mut);font-size:16px;flex:0 0 auto}
+.hrow2 .callq{font-size:18px;flex:0 0 auto;text-decoration:none}
 .htab{width:100%;border-collapse:collapse;font-size:13px}
 .htab th{font-size:11px;font-weight:600;color:var(--mut);text-align:right;padding:8px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
 .htab th:first-child{text-align:left;padding-left:13px}
@@ -246,11 +257,9 @@ nav button i{font-size:18px}
     <div class="hcard"><div id="homeMap"></div></div>
 
     <div class="hcard">
-      <div class="hhead"><h3 id="hDistTitle">Dağılım</h3><small>satıra dokun · tekrar dokun listeye git</small></div>
-      <div style="overflow-x:auto"><table class="htab">
-        <thead><tr><th id="hDimTh">Kırılım</th><th>Bayi</th><th>Aktif</th><th>A seg.</th><th>Koord.</th></tr></thead>
-        <tbody id="hDist"></tbody>
-      </table></div>
+      <div class="hhead"><h3 id="hDistTitle">Bölgeler</h3><button id="hBack" class="hback" hidden>‹ Geri</button></div>
+      <div id="hCrumb" class="hcrumb"></div>
+      <div id="hDrill"></div>
     </div>
 
     <div class="hcard">
