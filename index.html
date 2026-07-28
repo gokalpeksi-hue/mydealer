@@ -204,6 +204,19 @@ h4.sec{font-size:13px;color:var(--mut);margin:14px 2px 8px;text-transform:upperc
 .navbdg{position:absolute;top:4px;margin-left:16px;background:var(--warn);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .navbdg[hidden]{display:none}
 nav button{position:relative}
+.d-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--sc);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+.d-act.call{color:#0b7a5e;border-color:#bfe3d6;background:#f1faf7}
+.d-act.wa{color:#128c4a;border-color:#c6e6cf;background:#f2fbf4}
+.d-act.map{color:var(--pri2);border-color:#c9d9f2;background:#f3f7fe}
+.d-act.edit{color:#8a5a00;border-color:#f0d9a8;background:#fffaf0}
+.kv dt{background:transparent}
+.kv dl>dt:nth-of-type(odd),.kv dl>dd:nth-of-type(odd){background:#fafbfd}
+.vis-list{margin-top:10px}
+.vis-item.dur{border-left:4px solid var(--warn)}
+.vis-item.ziy{border-left:4px solid var(--acc)}
+.vis-del{float:right;color:var(--warn);font-size:11.5px;font-weight:700;margin-left:8px}
+.vis-bos{font-size:13px;color:var(--mut);padding:2px 2px 6px}
+.btn.amb{background:var(--warn);color:#fff}
 .hback{background:var(--chip);color:var(--pri2);font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;flex:0 0 auto}
 .hback[hidden]{display:none}
 .hcrumb{padding:7px 13px 0;font-size:12px;color:var(--mut);font-weight:700}
@@ -261,6 +274,7 @@ nav button i{font-size:18px}
     <div class="hcard">
       <div class="hhead"><h3>Sorgu · pivot ile ara</h3><small id="hUpd"></small></div>
       <div class="hsel"><label>Bölge<select id="hBolge"></select></label><label>Şehir<select id="hSehir"></select></label><label>İlçe<select id="hIlce"></select></label></div>
+      <div class="hpivots" id="hSegs"></div>
       <div class="hpivots" id="hPivots"></div>
       <div class="hscope"><select id="hScope" aria-label="Seçili kırılım"></select></div>
       <div class="hstats" id="hStats"></div>

@@ -143,7 +143,18 @@ function mapsHref(b) {
   const q = [b.tabela || b.unvan, b.ilce, b.sehir].filter(Boolean).join(' ');
   return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : '';
 }
-function lastVisit(id) { const v = ov.visits[id] || []; return v.length ? v[v.length - 1] : null; }
+function lastVisit(id) {
+  const v = (ov.visits[id] || []).filter(x => x.k !== 'durum');
+  return v.length ? v[v.length - 1] : null;
+}
+function lastNote(id) {
+  const v = (ov.visits[id] || []).filter(x => x.k === 'durum');
+  return v.length ? v[v.length - 1] : null;
+}
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 function fmtDate(iso) { const d = new Date(iso); return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
 /* ---------- liste ---------- */
@@ -235,33 +246,51 @@ function openDetail(id) {
   const b = getDealer(id);
   if (!b) return;
   const th = telHref(b.tel), wh = waHref(b.tel), mh = mapsHref(b);
-  const visits = (ov.visits[id] || []).slice().reverse();
+  const kayitlar = (ov.visits[id] || []);
+  const durumlar = kayitlar.map((v, i) => ({ v: v, i: i })).filter(x => x.v.k === 'durum').reverse();
+  const visits   = kayitlar.map((v, i) => ({ v: v, i: i })).filter(x => x.v.k !== 'durum').reverse();
+  const sc = segColor(b.segment);
+
+  const notListesi = (arr, tur, bosMsg) => arr.length ? arr.map(x =>
+    `<div class="vis-item ${tur}"><small>${fmtDateTime(x.v.t)}</small>${esc(x.v.n)}
+      <button class="vis-del" data-delvis="${id}|${x.i}">sil</button></div>`).join('')
+    : `<p class="vis-bos">${bosMsg}</p>`;
+
   $('#detailBody').innerHTML = `
     <div class="sh-head"><h2 style="flex:1">Bayi Detayı</h2><button class="sh-x" data-close="shDetail">✕</button></div>
-    <div class="d-head">
-      <div class="d-title">
-        <h2>${esc(b.tabela || b.unvan)}</h2>
-        <p>${esc([b.unvan, b.sehir, b.ilce].filter(Boolean).join(' · '))}</p>
-        <div class="bmeta" style="margin-top:8px">
-          ${b.segment ? `<span class="tag seg" style="background:${segColor(b.segment)}">Segment ${esc(b.segment)}</span>` : ''}
-          ${b.durum ? `<span class="tag mis">${esc(b.durum)}</span>` : ''}
-          ${b.bolge ? `<span class="tag">${esc(b.bolge)}</span>` : ''}
+    <div class="d-card" style="--sc:${sc}">
+      <div class="d-head">
+        <div class="d-title">
+          <h2>${esc(b.tabela || b.unvan)}</h2>
+          <p>${esc([b.unvan, b.sehir, b.ilce].filter(Boolean).join(' · '))}</p>
+          <div class="bmeta" style="margin-top:9px">
+            ${b.segment ? `<span class="tag seg" style="background:${sc}">Segment ${esc(b.segment)}</span>` : ''}
+            ${b.durum ? `<span class="tag mis">${esc(b.durum)}</span>` : ''}
+            ${b.bolge ? `<span class="tag">${esc(b.bolge)}</span>` : ''}
+          </div>
         </div>
+        <button class="fav ${ov.favs.includes(id) ? 'on' : ''}" data-fav="${id}" style="font-size:24px">⭐</button>
       </div>
-      <button class="fav ${ov.favs.includes(id) ? 'on' : ''}" data-fav="${id}" style="font-size:24px">⭐</button>
     </div>
     <div class="d-acts">
-      <a class="d-act ${th ? '' : 'dis'}" href="${th || '#'}"><i>📞</i>Ara</a>
-      <a class="d-act ${wh ? '' : 'dis'}" href="${wh || '#'}" target="_blank" rel="noopener"><i>💬</i>WhatsApp</a>
-      <a class="d-act ${mh ? '' : 'dis'}" href="${mh || '#'}" target="_blank" rel="noopener"><i>🗺️</i>Haritada Aç</a>
-      <button class="d-act" data-edit="${id}"><i>✏️</i>Düzenle</button>
+      <a class="d-act call ${th ? '' : 'dis'}" href="${th || '#'}"><i>📞</i>Ara</a>
+      <a class="d-act wa ${wh ? '' : 'dis'}" href="${wh || '#'}" target="_blank" rel="noopener"><i>💬</i>WhatsApp</a>
+      <a class="d-act map ${mh ? '' : 'dis'}" href="${mh || '#'}" target="_blank" rel="noopener"><i>🗺️</i>Haritada Aç</a>
+      <button class="d-act edit" data-edit="${id}"><i>✏️</i>Düzenle</button>
     </div>
     <div class="kv"><dl>${FIELDS.map(f => `<dt>${f[1]}</dt><dd>${esc(b[f[0]] || '—')}</dd>`).join('')}</dl></div>
+
+    <h4 class="sec">Durum Notları (${durumlar.length})</h4>
+    <div class="frow"><textarea id="durNote" placeholder="Bayinin güncel durumu… (ör. tabela yenilendi, stok sıkıntısı var, sahibi değişti)"></textarea></div>
+    <div class="btnrow"><button class="btn amb" data-durum="${id}">+ Durum Notu Ekle</button></div>
+    <div class="vis-list">${notListesi(durumlar, 'dur', 'Henüz durum notu yok.')}</div>
+
     <h4 class="sec">Ziyaret Notları (${visits.length})</h4>
     <div class="frow"><textarea id="visNote" placeholder="Ziyaret notu yazın… (ör. sipariş aldı, tabela yenilenecek)"></textarea></div>
     <div class="btnrow"><button class="btn grn" data-visit="${id}">+ Ziyaret Kaydet</button></div>
-    <div style="margin-top:10px">${visits.map((v, i) => `<div class="vis-item"><small>${fmtDate(v.t)}</small>${esc(v.n)}<button style="float:right;color:var(--warn);font-size:12px" data-delvis="${id}|${visits.length - 1 - i}">sil</button></div>`).join('') || '<p style="font-size:13px;color:var(--mut)">Henüz ziyaret kaydı yok.</p>'}</div>
-    <div class="btnrow" style="margin-top:16px"><button class="btn red" data-del="${id}">🗑️ Bayiyi Listeden Çıkar</button></div>`;
+    <div class="vis-list">${notListesi(visits, 'ziy', 'Henüz ziyaret kaydı yok.')}</div>
+
+    <div class="btnrow" style="margin-top:18px"><button class="btn red" data-del="${id}">🗑️ Bayiyi Listeden Çıkar</button></div>`;
   $('#shDetail').classList.add('on');
 }
 
@@ -864,11 +893,19 @@ document.addEventListener('click', e => {
     renderPivot(); return;
   }
   if (t.id === 'btnSaveEdit') { saveEdit(t.dataset.id); return; }
+  if (t.dataset && t.dataset.durum) {
+    const id = t.dataset.durum, n = $('#durNote').value.trim();
+    if (!n) { alert('Önce not yazın.'); return; }
+    ov.visits[id] = ov.visits[id] || [];
+    ov.visits[id].push({ t: new Date().toISOString(), n: n, k: 'durum' });
+    save(); openDetail(id); renderList();
+    return;
+  }
   if (t.dataset && t.dataset.visit) {
     const id = t.dataset.visit, n = $('#visNote').value.trim();
     if (!n) { alert('Önce not yazın.'); return; }
     ov.visits[id] = ov.visits[id] || [];
-    ov.visits[id].push({ t: new Date().toISOString(), n });
+    ov.visits[id].push({ t: new Date().toISOString(), n: n, k: 'ziyaret' });
     save(); openDetail(id); renderList();
     return;
   }
@@ -993,6 +1030,14 @@ function hPending() {
   }
 }
 
+const HSEGS = ['A+', 'A', 'B', 'C', 'D'];
+function hSegChips() {
+  $('#hSegs').innerHTML =
+    `<button class="hp ${F.seg ? '' : 'on'}" data-hseg="">Tüm segmentler</button>` +
+    HSEGS.map(s => `<button class="hp ${F.seg === s ? 'on' : ''}" data-hseg="${s}"
+      style="${F.seg === s ? 'background:' + segColor(s) + ';border-color:' + segColor(s) + ';color:#fff' : ''}">${s}</button>`).join('');
+}
+
 function renderHome() {
   if (!allDealers().length) {
     hPending();
@@ -1002,6 +1047,7 @@ function renderHome() {
     return;
   }
   hPending();
+  hSegChips();
   const gs = hGroups();
   if (home.scope && !gs.some(g => g[0] === home.scope)) home.scope = '';
   const dimLabel = (HDIMS.find(d => d[0] === home.dim) || HDIMS[0])[1];
@@ -1248,6 +1294,11 @@ $('#hDrill').addEventListener('click', e => {
 function lvlLabel() {
   return 'Tüm bayiler';
 }
+$('#hSegs').addEventListener('click', e => {
+  const b = e.target.closest('[data-hseg]'); if (!b) return;
+  F.seg = b.dataset.hseg;
+  buildFilters(); applyFilters();
+});
 $('#hPend').addEventListener('click', openPending);
 $('#hBack').addEventListener('click', hBack);
 
